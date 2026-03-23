@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYD Charger V9</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0b1e2d;
+      color: white;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .app {
+      max-width: 560px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: #132f44;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 18px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    button {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      background: #00c853;
+      color: white;
+      font-size: 17px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .secondary {
+      background: #607d8b;
+    }
+
+    .warning {
+      background: #ff9800;
+      color: white;
+    }
+
+    .danger {
+      background: #d32f2f;
+      color: white;
+    }
+
+    .result {
+      margin-top: 14px;
+      background: rgba(255,255,255,0.08);
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 17px;
+      line-height: 1.5;
+    }
+
+    .small {
+      font-size: 13px;
+      opacity: 0.85;
+      margin-top: 8px;
+    }
+
+    .highlight {
+      color: #9cffb1;
+      font-weight: bold;
+    }
+
+    .inline-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .inline-buttons button {
+      margin-top: 0;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    #reminderBox,
+    #alarmBox {
+      display: none;
+    }
+
+    .countdown {
+      font-size: 34px;
+      font-weight: bold;
+      text-align: center;
+      margin: 10px 0;
+      color: #9cffb1;
+    }
+
+    .alarm-active {
+      border: 2px solid #ff5252;
+      box-shadow: 0 0 18px rgba(255,82,82,0.5);
+    }
+
+    .big-alert {
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      color: #ffd54f;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>⚡ BYD Charger</h1>
+
+    <div class="card">
+      <h2>1) Charging Time</h2>
+
+      <label>Battery Capacity (kWh)</label>
+      <input type="number" id="capacity1" placeholder="Example: 45" />
+
+      <label>Current Battery (%)</label>
+      <input type="number" id="currentSOC1" placeholder="Example: 35" />
+
+      <label>Target Battery (%)</label>
+      <input type="number" id="targetSOC1" placeholder="Example: 90" />
+
+      <label>Charger Power (kW)</label>
+      <input type="number" id="chargerPower1" placeholder="Example: 7" />
+
+      <button onclick="calculateChargeTime()">Calculate Charging Time</button>
+
+      <div class="result" id="output1">Enter values and press calculate.</div>
+      <div class="small">After calculation, the app can ask whether you want an alarm at the target percentage.</div>
+    </div>
+
+    <div class="card" id="reminderBox">
+      <h2>2) Alarm Request</h2>
+      <div class="result" id="reminderText"></div>
+      <div class="inline-buttons">
+        <button onclick="startAlarmCountdown()">Yes, warn me</button>
+        <button class="secondary" onclick="cancelReminderPrompt()">No</button>
+      </div>
+    </div>
+
+    <div class="card" id="alarmBox">
+      <h2>3) Active Alarm</h2>
+      <div class="result">
+        <div id="alarmStatus">No active alarm.</div>
+        <div class="countdown" id="countdownDisplay">00:00:00</div>
+        <div class="small" id="alarmTargetText"></div>
+      </div>
+      <div class="inline-buttons">
+        <button class="danger" onclick="stopAlarm()">Stop Alarm</button>
+        <button class="secondary" onclick="testAlarmNow()">Test Alarm Now</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>4) EDL Hours → New Battery %</h2>
+
+      <label>Battery Capacity (kWh)</label>
+      <input type="number" id="capacity2" placeholder="Example: 45" />
+
+      <label>Current Battery (%)</label>
+      <input type="number" id="currentSOC2" placeholder="Example: 35" />
+
+      <label>EDL ON Time (hours)</label>
+      <input type="number" id="edlHours" placeholder="Example: 3" />
+
+      <label>Charger Power (kW)</label>
+      <input type="number" id="chargerPower2" placeholder="Example: 7" />
+
+      <button onclick="calculateNewSOC()">Calculate New Battery %</button>
+
+      <div class="result" id="output2">Enter values and press calculate.</div>
+      <div class="small">This estimates the new battery % after charging during EDL hours.</div>
+    </div>
+
+    <div class="card">
+      <h2>5) Saved Data</h2>
+      <button class="secondary" onclick="clearSavedData()">Clear Saved Values</button>
+      <button class="warning" onclick="clearAlarmData()">Clear Alarm</button>
+      <div class="small">Your last values are saved automatically on this browser.</div>
+      <div class="small" id="savedReminderInfo">No active alarm.</div>
+    </div>
+  </div>
+
+  <script>
+    const inputIds = [
+      "capacity1", "currentSOC1", "targetSOC1", "chargerPower1",
+      "capacity2", "currentSOC2", "edlHours", "chargerPower2"
+    ];
+
+    let pendingReminder = null;
+    let countdownInterval = null;
+    let alarmRepeatInterval = null;
+    let audioContext = null;
+
+    function saveValues() {
+      inputIds.forEach(id => {
+        localStorage.setItem(id, document.getElementById(id).value);
+      });
+    }
+
+    function loadValues() {
+      inputIds.forEach(id => {
+        const savedValue = localStorage.getItem(id);
+        if (savedValue !== null) {
+          document.getElementById(id).value = savedValue;
+        }
+      });
+    }
+
+    function attachAutoSave() {
+      inputIds.forEach(id => {
+        document.getElementById(id).addEventListener("input", saveValues);
+      });
+    }
+
+    function clearSavedData() {
+      inputIds.forEach(id => {
+        localStorage.removeItem(id);
+        document.getElementById(id).value = "";
+      });
+
+      document.getElementById("output1").innerHTML = "Saved values cleared.";
+      document.getElementById("output2").innerHTML = "Saved values cleared.";
+    }
+
+    function formatTime(hoursFloat) {
+      let hours = Math.floor(hoursFloat);
+      let minutes = Math.round((hoursFloat - hours) * 60);
+
+      if (minutes === 60) {
+        hours += 1;
+        minutes = 0;
+      }
+
+      return hours + "h " + minutes + "min";
+    }
+
+    function formatClock(dateObj) {
+      let h = dateObj.getHours().toString().padStart(2, '0');
+      let m = dateObj.getMinutes().toString().padStart(2, '0');
+      return h + ":" + m;
+    }
+
+    function formatCountdown(ms) {
+      if (ms < 0) ms = 0;
+      let totalSeconds = Math.floor(ms / 1000);
+      let hours = Math.floor(totalSeconds / 3600);
+      let minutes = Math.floor((totalSeconds % 3600) / 60);
+      let seconds = totalSeconds % 60;
+
+      return (
+        hours.toString().padStart(2, '0') + ":" +
+        minutes.toString().padStart(2, '0') + ":" +
+        seconds.toString().padStart(2, '0')
+      );
+    }
+
+    function calculateChargeTime() {
+      let capacity = parseFloat(document.getElementById("capacity1").value);
+      let current = parseFloat(document.getElementById("currentSOC1").value);
+      let target = parseFloat(document.getElementById("targetSOC1").value);
+      let power = parseFloat(document.getElementById("chargerPower1").value);
+
+      if (isNaN(capacity) || isNaN(current) || isNaN(target) || isNaN(power) || capacity <= 0 || power <= 0) {
+        document.getElementById("output1").innerHTML = "Please enter valid numbers in all fields.";
+        document.getElementById("reminderBox").style.display = "none";
+        return;
+      }
+
+      if (current < 0 || current > 100 || target < 0 || target > 100) {
+        document.getElementById("output1").innerHTML = "Battery % must be between 0 and 100.";
+        document.getElementById("reminderBox").style.display = "none";
+        return;
+      }
+
+      if (target <= current) {
+        document.getElementById("output1").innerHTML = "Target battery % must be higher than current battery %.";
+        document.getElementById("reminderBox").style.display = "none";
+        return;
+      }
+
+      let energyNeeded = capacity * (target - current) / 100;
+      let time = energyNeeded / power;
+      let now = new Date();
+      let stopTime = new Date(now.getTime() + time * 60 * 60 * 1000);
+
+      document.getElementById("output1").innerHTML =
+        "Energy needed: <b>" + energyNeeded.toFixed(2) + " kWh</b><br>" +
+        "Estimated charging time: <b>" + formatTime(time) + "</b><br>" +
+        "Estimated target time: <span class='highlight'>" + formatClock(stopTime) + "</span>";
+
+      pendingReminder = {
+        target: target,
+        stopTimestamp: stopTime.getTime(),
+        stopClock: formatClock(stopTime)
+      };
+
+      document.getElementById("reminderText").innerHTML =
+        "Battery should reach <b>" + target + "%</b> at about " +
+        "<span class='highlight'>" + pendingReminder.stopClock + "</span>.<br><br>" +
+        "Do you want the app to warn you at that time?";
+
+      document.getElementById("reminderBox").style.display = "block";
+      saveValues();
+    }
+
+    function calculateNewSOC() {
+      let capacity = parseFloat(document.getElementById("capacity2").value);
+      let current = parseFloat(document.getElementById("currentSOC2").value);
+      let edlHours = parseFloat(document.getElementById("edlHours").value);
+      let power = parseFloat(document.getElementById("chargerPower2").value);
+
+      if (isNaN(capacity) || isNaN(current) || isNaN(edlHours) || isNaN(power) || capacity <= 0 || power <= 0 || edlHours < 0) {
+        document.getElementById("output2").innerHTML = "Please enter valid numbers in all fields.";
+        return;
+      }
+
+      if (current < 0 || current > 100) {
+        document.getElementById("output2").innerHTML = "Battery % must be between 0 and 100.";
+        return;
+      }
+
+      let energyAdded = edlHours * power;
+      let percentAdded = (energyAdded / capacity) * 100;
+      let newSOC = current + percentAdded;
+
+      if (newSOC > 100) {
+        newSOC = 100;
+      }
+
+      document.getElementById("output2").innerHTML =
+        "Energy added: <b>" + energyAdded.toFixed(2) + " kWh</b><br>" +
+        "Battery increase: <b>" + percentAdded.toFixed(1) + "%</b><br>" +
+        "New estimated battery: <b>" + newSOC.toFixed(1) + "%</b>";
+
+      saveValues();
+    }
+
+    function cancelReminderPrompt() {
+      document.getElementById("reminderBox").style.display = "none";
+    }
+
+    function startAlarmCountdown() {
+      if (!pendingReminder) return;
+
+      localStorage.setItem("batteryAlarm", JSON.stringify(pendingReminder));
+      document.getElementById("reminderText").innerHTML =
+        "Alarm saved for <span class='highlight'>" + pendingReminder.stopClock + "</span>.";
+      showAlarmStatus();
+      startCountdownLoop();
+    }
+
+    function clearAlarmData() {
+      localStorage.removeItem("batteryAlarm");
+      stopAlarmSoundOnly();
+
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+
+      document.getElementById("savedReminderInfo").innerHTML = "No active alarm.";
+      document.getElementById("alarmBox").style.display = "none";
+      document.getElementById("reminderBox").style.display = "none";
+    }
+
+    function showAlarmStatus() {
+      const saved = localStorage.getItem("batteryAlarm");
+
+      if (!saved) {
+        document.getElementById("savedReminderInfo").innerHTML = "No active alarm.";
+        return;
+      }
+
+      const alarm = JSON.parse(saved);
+      document.getElementById("savedReminderInfo").innerHTML =
+        "Active alarm set for <span class='highlight'>" + alarm.stopClock +
+        "</span> at target <b>" + alarm.target + "%</b>.";
+
+      document.getElementById("alarmBox").style.display = "block";
+      document.getElementById("alarmStatus").innerHTML =
+        "Alarm set for target <b>" + alarm.target + "%</b>.";
+      document.getElementById("alarmTargetText").innerHTML =
+        "Expected target time: <span class='highlight'>" + alarm.stopClock + "</span>";
+    }
+
+    function startCountdownLoop() {
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+      }
+
+      updateCountdown();
+      countdownInterval = setInterval(updateCountdown, 1000);
+    }
+
+    function updateCountdown() {
+      const saved = localStorage.getItem("batteryAlarm");
+
+      if (!saved) {
+        document.getElementById("countdownDisplay").innerHTML = "00:00:00";
+        return;
+      }
+
+      const alarm = JSON.parse(saved);
+      const remaining = alarm.stopTimestamp - Date.now();
+
+      document.getElementById("alarmBox").style.display = "block";
+      document.getElementById("countdownDisplay").innerHTML = formatCountdown(remaining);
+
+      if (remaining <= 0) {
+        triggerAlarm(alarm);
+      }
+    }
+
+    function triggerAlarm(alarm) {
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+
+      document.getElementById("alarmBox").classList.add("alarm-active");
+      document.getElementById("alarmStatus").innerHTML =
+        "<div class='big-alert'>Battery target reached</div>" +
+        "Battery should now be around <b>" + alarm.target + "%</b>.<br>" +
+        "Time to check or stop charging.";
+
+      document.getElementById("countdownDisplay").innerHTML = "00:00:00";
+      document.getElementById("alarmTargetText").innerHTML =
+        "Target time reached at <span class='highlight'>" + alarm.stopClock + "</span>";
+
+      if (navigator.vibrate) {
+        navigator.vibrate([500, 300, 500, 300, 800]);
+      }
+
+      playBeepSequence();
+
+      if (alarmRepeatInterval) {
+        clearInterval(alarmRepeatInterval);
+      }
+
+      alarmRepeatInterval = setInterval(() => {
+        playBeepSequence();
+        if (navigator.vibrate) {
+          navigator.vibrate([400, 200, 400]);
+        }
+      }, 8000);
+
+      alert("Battery should now be around " + alarm.target + "%. Time to check charging.");
+    }
+
+    function stopAlarm() {
+      localStorage.removeItem("batteryAlarm");
+      stopAlarmSoundOnly();
+
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+
+      document.getElementById("alarmBox").classList.remove("alarm-active");
+      document.getElementById("alarmStatus").innerHTML = "No active alarm.";
+      document.getElementById("countdownDisplay").innerHTML = "00:00:00";
+      document.getElementById("alarmTargetText").innerHTML = "";
+      document.getElementById("savedReminderInfo").innerHTML = "No active alarm.";
+    }
+
+    function stopAlarmSoundOnly() {
+      if (alarmRepeatInterval) {
+        clearInterval(alarmRepeatInterval);
+        alarmRepeatInterval = null;
+      }
+    }
+
+    function playBeepSequence() {
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        if (audioContext.state === "suspended") {
+          audioContext.resume();
+        }
+
+        let start = audioContext.currentTime;
+        beep(start, 0.18, 880);
+        beep(start + 0.28, 0.18, 880);
+        beep(start + 0.56, 0.35, 660);
+      } catch (e) {
+        console.log("Audio could not play:", e);
+      }
+    }
+
+    function beep(startTime, duration, frequency) {
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+
+      gainNode.gain.setValueAtTime(0.001, startTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.25, startTime + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+      oscillator.start(startTime);
+      oscillator.stop(startTime + duration);
+    }
+
+    function testAlarmNow() {
+      const testAlarm = {
+        target: document.getElementById("targetSOC1").value || 90,
+        stopClock: formatClock(new Date())
+      };
+      triggerAlarm(testAlarm);
+    }
+
+    loadValues();
+    attachAutoSave();
+    showAlarmStatus();
+
+    if (localStorage.getItem("batteryAlarm")) {
+      startCountdownLoop();
+    }
+  </script>
+</body>
+</html>
